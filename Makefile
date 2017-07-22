@@ -4,7 +4,7 @@ CFLAGS=-Wall -Wextra -pedantic -O2 -fPIC -std=c++11
 SOURCES=window.cpp main.cpp
 MOC_HEADERS=window.h
 EXECUTABLE=evo1
-INCDIRS=-I/usr/include/qt5 -I/usr/include/qt5/QtCore -I/usr/include/qt5/QtGui -I/usr/include/qt5/QtWidgets
+INCDIRS=-I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets
 LIBPATH=-L/usr/lib/x86_64-linux-gnu
 LIBS=-lQt5Core -lQt5Gui -lQt5Widgets
 # Change postfixes
