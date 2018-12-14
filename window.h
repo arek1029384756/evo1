@@ -3,99 +3,69 @@
 
 #include <QWidget>
 #include <vector>
+#include <list>
 #include <memory>
-#include <exception>
-#include <stdexcept>    //covering g++ version differences
+#include "creature.hpp"
 
-class Creature {
-    int m_gene;
-    std::pair<size_t, size_t> m_pos;
+namespace gui {
 
-    public:
-    Creature(int gene, std::pair<size_t, size_t> position)
-        : m_gene(gene), m_pos(position) {
+    class Window : public QWidget
+    {
+        Q_OBJECT
 
-    }
+        struct Color {
+            inline static const QColor land = Qt::black;
+            inline static const QColor water = Qt::cyan;
+            inline static const QColor liveBody = Qt::red;
+            inline static const QColor deadBody = Color::water;
+            inline static const QColor liveText = Qt::white;
+            inline static const QColor deadText = Qt::black;
+            inline static const QColor outline = Color::land;
+        };
 
-    size_t getLinearPos(size_t dimensionSize) const {
-        return m_pos.second * dimensionSize + m_pos.first;
-    }
+        static constexpr std::size_t FIELDS = 16;
+        static constexpr qreal WSIZE = 1024.0;
+        static constexpr qreal FIELD_SIZE = WSIZE / FIELDS;
 
-    const std::pair<size_t, size_t>& getPos() const {
-        return m_pos;
-    }
+        static QPointF log2phys(const std::pair<std::size_t, std::size_t>& log) {
+            return QPointF(log.first, log.second) * FIELD_SIZE - QPointF(WSIZE / 2, WSIZE / 2);
+        }
 
-    void setPos(const std::pair<size_t, size_t>& position) {
-        m_pos = position;
-    }
+        static QPointF log2center(const std::pair<std::size_t, std::size_t>& log) {
+            return log2phys(log) + QPointF(FIELD_SIZE / 2, FIELD_SIZE / 2);
+        }
 
-    int getGene() const {
-        return m_gene;
-    }
+        static QRectF log2bounding(const std::pair<std::size_t, std::size_t>& log) {
+            return QRectF(log2phys(log), QSizeF(FIELD_SIZE, FIELD_SIZE));
+        }
 
-    bool operator== (const Creature& cr) const {
-        return m_pos == cr.getPos();
-    }
+        using CreaturesContainer = std::list<Creature>;
+        using CreaturesMap = std::map<std::pair<std::size_t, std::size_t>, std::unique_ptr<CreaturesContainer>>;
+        using MapFifo = std::list<std::unique_ptr<CreaturesMap>>;
 
-    bool operator> (const Creature& cr) const {
-        if(m_pos.second > cr.getPos().second) return true;
-        if(m_pos.second < cr.getPos().second) return false;
-        return m_pos.first > cr.getPos().first;
-    }
+        MapFifo m_fifoLand;
+        MapFifo m_fifoWater;
 
-    bool operator< (const Creature& cr) const {
-        if(m_pos.second < cr.getPos().second) return true;
-        if(m_pos.second > cr.getPos().second) return false;
-        return m_pos.first < cr.getPos().first;
-    }
+        std::vector<std::vector<bool>> m_world;
 
-};
+        void createWorld();
+        void populateWorld();
+        void drawWorld(QPainter& painter) const;
+        void drawCreatures(QPainter& painter, const MapFifo& fifo, QColor colBody, QColor colText) const;
+        void initPainter(QPainter& painter) const;
+        auto changeCreaturePos(Creature& cr) const;
+        bool isCreatureOnLand(const Creature& cr) const;
 
+        public slots:
+            void animate();
 
-class Window : public QWidget
-{
-    Q_OBJECT
+        public:
+            Window(QWidget *parent = 0);
 
-    static constexpr size_t FIELDS = 16;
-    static constexpr qreal WSIZE = 1024.0;
-    static constexpr qreal FIELD_SIZE = WSIZE / FIELDS;
+        protected:
+            void paintEvent(QPaintEvent *event) override;
+    };
 
-    static QPointF log2phys(const std::pair<size_t, size_t>& log) {
-        return QPointF(log.first, log.second) * FIELD_SIZE - QPointF(WSIZE / 2, WSIZE / 2);
-    }
-
-    static QPointF log2center(const std::pair<size_t, size_t>& log) {
-        return log2phys(log) + QPointF(FIELD_SIZE / 2, FIELD_SIZE / 2);
-    }
-
-    static QRectF log2bounding(const std::pair<size_t, size_t>& log) {
-        return QRectF(log2phys(log), QSizeF(FIELD_SIZE, FIELD_SIZE));
-    }
-
-    std::vector<std::vector<int>> m_world;
-
-    std::vector<std::unique_ptr<Creature>> m_creatures;
-
-    size_t m_landCnt;
-
-    void extractVisibleSubset(std::vector<Creature*>& subset);
-
-    void drawWorld(QPainter& painter);
-
-    void drawCreatures(QPainter& painter, const std::vector<Creature*>& creaturesPainted);
-
-    void initPainter(QPainter& painter);
-
-    void changePos(Creature* const cr);
-
-    public slots:
-        void updateData();
-
-    public:
-        Window(QWidget *parent = 0);
-
-    protected:
-        void paintEvent(QPaintEvent *event) override;
-};
+}
 
 #endif
