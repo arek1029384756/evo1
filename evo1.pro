@@ -10,5 +10,5 @@ INCLUDEPATH += .
 QMAKE_CXXFLAGS += -Wextra -pedantic -std=c++17
 
 # Input
-HEADERS += window.h
+HEADERS += partitions.hpp creature.hpp window.h
 SOURCES += main.cpp window.cpp

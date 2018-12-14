@@ -17,6 +17,12 @@ namespace gui {
         QTimer::singleShot(100, this, SLOT(animate()));
     }
 
+    auto* Window::newPartition() const {
+        return new CreaturesPartition([](const Creature& x) {
+            return x.getPos();
+        });
+    }
+
     void Window::createWorld() {
         std::srand(std::chrono::system_clock::now().time_since_epoch().count());
         for(std::size_t i = 0; i < FIELDS; ++i) {
@@ -31,17 +37,13 @@ namespace gui {
     }
 
     void Window::populateWorld() {
-        //temporary test implementation
-        auto* const pV = new CreaturesContainer();
+        auto* const pP = newPartition();
         for(std::size_t i = 0; i < 10000000; ++i) {
             auto c = Creature(i % 101, std::make_pair(FIELDS / 2, FIELDS / 2));
-            pV->emplace_back(c);
+            pP->insert(c);
         }
 
-        auto* const pM = new CreaturesMap();
-        pM->emplace(std::make_pair(FIELDS / 2, FIELDS / 2), std::unique_ptr<CreaturesContainer>(pV));
-        m_fifoLand.emplace_back(std::unique_ptr<CreaturesMap>(pM));
-        //
+        m_fifoLand.emplace_back(pP);
     }
 
     auto Window::changeCreaturePos(Creature& cr) const {
@@ -58,19 +60,38 @@ namespace gui {
 
     bool Window::isCreatureOnLand(const Creature& cr) const {
         auto pos = cr.getPos();
-        return m_world[pos.first][pos.second];
+        return m_world[pos.second][pos.first];
     }
 
-    void Window::animate() {
-        //TODO: implement
-
+    void Window::deleteDead() {
+        m_fifoWater.clear();
         update();
         QTimer::singleShot(1000, this, SLOT(animate()));
     }
 
+    void Window::animate() {
+        auto* const pL = newPartition();
+        auto* const pW = newPartition();
+
+        const auto& part = m_fifoLand.front();
+        part->for_each([&](const Creature::Position&, Creature& cr) {
+            changeCreaturePos(cr);
+            auto land = isCreatureOnLand(cr);
+            auto* const pP = (land) ? pL : pW;
+            pP->insert(cr);
+        });
+
+        m_fifoLand.emplace_back(pL);
+        m_fifoWater.emplace_back(pW);
+        m_fifoLand.pop_front();
+
+        update();
+        QTimer::singleShot(1000, this, SLOT(deleteDead()));
+    }
+
     void Window::drawWorld(QPainter& painter) const {
         painter.setPen(Color::land);
-        std::pair<std::size_t, std::size_t> coord(0, 0);
+        Creature::Position coord(0, 0);
         for(const auto& line : m_world) {
             coord.first = 0;
             for(const auto& field : line) {
@@ -87,28 +108,27 @@ namespace gui {
         }
     }
 
-    void Window::drawCreatures(QPainter& painter, const decltype(m_fifoLand)& fifo, QColor colBody, QColor colText) const {
+    void Window::drawCreatures(QPainter& painter, const MapFifo& fifo, QColor colBody, QColor colText) const {
         if(fifo.empty()) {
             return;
         }
 
-        const auto& pM = fifo.front();
-        for(const auto& pair : *pM) {
-            auto pos = pair.first;
+        const auto& part = fifo.front();
+        part->for_each_nth(0, [&](const Creature::Position& pos, Creature& cr) {
             auto center = log2center(pos);
             auto boundingRect = log2bounding(pos);
 
-            if(!pair.second->empty()) {
-                auto fit = pair.second->begin();
-                painter.setPen(Color::outline);
-                painter.setBrush(colBody);
-                painter.drawEllipse(center, FIELD_SIZE / 3, FIELD_SIZE / 3);
+            painter.setPen(Color::outline);
+            painter.setBrush(colBody);
+            painter.drawEllipse(center, FIELD_SIZE / 3, FIELD_SIZE / 3);
 
-                painter.setPen(colText);
-                painter.setFont(QFont("Arial", 14, QFont::Bold));
-                painter.drawText(boundingRect, Qt::AlignCenter, QString::number(fit->getGene()));
-            }
-        }
+            painter.setPen(colText);
+            painter.setFont(QFont("Arial", 14, QFont::Bold));
+            painter.drawText(boundingRect,
+                             Qt::AlignCenter,
+                             QString::number(cr.getGene()));
+
+        });
     }
 
     void Window::initPainter(QPainter& painter) const {

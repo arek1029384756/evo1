@@ -6,24 +6,29 @@
 namespace gui {
 
     class Creature {
-        std::int32_t m_gene;
-        std::pair<std::size_t, std::size_t> m_pos;
 
         public:
-        Creature(std::int32_t gene, const std::pair<std::size_t, std::size_t>& position)
+        using Position = std::pair<std::size_t, std::size_t>;
+
+        Creature(std::int32_t gene, const Position& position)
             : m_gene(gene), m_pos(position) {}
 
         const auto& getPos() const {
             return m_pos;
         }
 
-        void setPos(const std::pair<std::size_t, std::size_t>& position) {
+        void setPos(const Position& position) {
             m_pos = position;
         }
 
         auto getGene() const {
             return m_gene;
         }
+
+        private:
+        std::int32_t m_gene;
+        Position m_pos;
+
     };
 
 }
