@@ -2,6 +2,7 @@
 #include <string>
 #include <iterator>
 #include <functional>
+#include <numeric>
 #include <vector>
 #include <memory>
 #include <map>
@@ -10,29 +11,42 @@ namespace extstd {
 
     template<typename Val, typename Key = int, typename Container = std::vector<Val>>
     class partition {
+        using Condition = std::function<Key(const Val&)>;
+
         std::map<Key, std::unique_ptr<Container>> m_map;
-        std::function<Key(Val)> m_condition;
+        Condition m_condition;
 
         public:
-        partition(const std::function<Key(Val)>& condition)
+        partition(const Condition& condition)
             : m_condition(condition) {}
 
         template<typename Input>
-        partition(const Input& data, const std::function<Key(Val)>& condition)
+        partition(Input&& data, const Condition& condition)
+            : m_condition(condition) {
+            for(auto&& v : data) {
+                insert(std::move(v));
+            }
+        }
+
+        template<typename Input>
+        partition(Input& data, const Condition& condition)
             : m_condition(condition) {
             for(const auto& v : data) {
                 insert(v);
             }
         }
 
-        void insert(const Val& v) {
+        template<typename Value>
+        void insert(Value&& v) {
             auto key = m_condition(v);
             auto it = m_map.lower_bound(key);
             if(it != m_map.end() && it->first == key) {
-                it->second->emplace_back(v);
+                it->second->emplace(std::forward<Value>(v));
             } else {
+                auto* c = new Container();
+                c->emplace(std::forward<Value>(v));
                 m_map.emplace_hint(it,
-                                    std::make_pair(key, std::unique_ptr<Container>(new Container({v})))
+                                    std::make_pair(key, std::unique_ptr<Container>(c))
                                 );
             }
         }
@@ -49,16 +63,22 @@ namespace extstd {
             }
         }
 
-        void for_each(const std::function<void(const Key&, Val&)>& fun) {
+        std::size_t size() const {
+            return std::accumulate(m_map.begin(), m_map.end(), std::size_t(0), [](const auto& sum, const auto& pair) {
+                return sum + pair.second->size();
+            });
+        }
+
+        void for_each(const std::function<void(const Key&, const Val&)>& fun) {
             for(const auto& pair : m_map) {
-                for(auto& v : *pair.second) {
+                for(const auto& v : *pair.second) {
                     fun(pair.first, v);
                 }
             }
         }
 
         void for_each_nth_nonthrow(const std::size_t n,
-                          const std::function<void(const Key&, Val&)>& existFun,
+                          const std::function<void(const Key&, const Val&)>& existFun,
                           const std::function<void(const Key&)>& emptyFun = [](const Key&){}) {
             for(const auto& pair : m_map) {
                 auto size = pair.second->size();
@@ -72,7 +92,7 @@ namespace extstd {
         }
 
         void for_each_nth(const std::size_t n,
-                          const std::function<void(const Key&, Val&)>& existFun) {
+                          const std::function<void(const Key&, const Val&)>& existFun) {
             for_each_nth_nonthrow(n, existFun, [&n](const Key&) {
                 throw std::out_of_range(std::string("Could not find value for index n = ") + std::to_string(n));
             });
@@ -85,7 +105,7 @@ namespace extstd {
                 std::copy(m.second->begin(), m.second->end(), std::ostream_iterator<Val>(std::cout, " "));
                 std::cout << std::endl << std::endl;
             }
-            std::cout << std::endl;
+            std::cout << "Total size: " << size() << std::endl;
         }
     };
 
