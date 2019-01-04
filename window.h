@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <vector>
 #include <list>
+#include <set>
 #include <memory>
 #include "creature.hpp"
 #include "partitions.hpp"
@@ -24,7 +25,7 @@ namespace gui {
             inline static const QColor outline = Color::land;
         };
 
-        static constexpr std::size_t FIELDS = 16;
+        static constexpr std::int32_t FIELDS = 16;
         static constexpr qreal WSIZE = 1024.0;
         static constexpr qreal FIELD_SIZE = WSIZE / FIELDS;
 
@@ -40,7 +41,8 @@ namespace gui {
             return QRectF(log2phys(log), QSizeF(FIELD_SIZE, FIELD_SIZE));
         }
 
-        using CreaturesPartition = extstd::partition<Creature, Creature::Position>;
+        using CreaturesPartition = extstd::partition<Creature, Creature::Position, std::set<Creature, std::greater<Creature>>>;
+        //using CreaturesPartition = extstd::partition<Creature, Creature::Position, std::list<Creature>>;
         using MapFifo = std::list<std::unique_ptr<CreaturesPartition>>;
 
         MapFifo m_fifoLand;
@@ -52,9 +54,12 @@ namespace gui {
         void createWorld();
         void populateWorld();
         void drawWorld(QPainter& painter) const;
-        void drawCreatures(QPainter& painter, const MapFifo& fifo, QColor colBody, QColor colText) const;
+        void drawCreatures(QPainter& painter, const MapFifo& fifo) const;
         void initPainter(QPainter& painter) const;
+        Creature::Position getNeighbouringField(const Creature& cr, bool land) const;
+        Creature offspring(const Creature& cr) const;
         auto changeCreaturePos(Creature& cr) const;
+        bool isFieldLand(const Creature::Position& pos) const;
         bool isCreatureOnLand(const Creature& cr) const;
 
         public slots:
