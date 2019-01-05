@@ -155,7 +155,7 @@ namespace gui {
             auto boundingRect = log2bounding(pos);
 
             auto land = isCreatureOnLand(cr);
-            auto colBody = (land) ? Color::liveBody : Color::deadBody;
+            auto colBody = (land) ? Color::gene2Color(cr.getGene()) : Color::deadBody;
             auto colText = (land) ? Color::liveText : Color::deadText;
 
             painter.setPen(Color::outline);

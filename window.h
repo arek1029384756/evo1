@@ -6,6 +6,7 @@
 #include <list>
 #include <set>
 #include <memory>
+#include <cmath>
 #include "creature.hpp"
 #include "partitions.hpp"
 
@@ -23,6 +24,20 @@ namespace gui {
             inline static const QColor liveText = Qt::white;
             inline static const QColor deadText = Qt::black;
             inline static const QColor outline = Color::land;
+
+            template<typename TGene>
+            static QColor gene2Color(TGene gene) {
+                static auto gauss = [](auto gene, auto mean) -> int {
+                    constexpr qreal sigma2 = qreal(3) * Creature::MAX_GENE;
+                    auto exponent = -std::pow((gene - mean), 2) / (sigma2 * 2);
+                    auto g = qreal(255) * std::exp(exponent);
+                    return std::round(g);
+                };
+
+                return QColor(gauss(gene, Creature::MAX_GENE),
+                              gauss(gene, Creature::MAX_GENE / 2),
+                              gauss(gene, 0));
+            }
         };
 
         static constexpr std::int32_t FIELDS = 16;
